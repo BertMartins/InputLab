@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="InputLab — diagnóstico visual de teclado, mouse, scroll e drift, com modo de captura exclusiva de teclado." />
   <title>InputLab — Teste de Teclado e Mouse</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -86,11 +87,15 @@
             <div>
               <h1 class="text-2xl md:text-3xl font-bold tracking-tight">InputLab</h1>
               <p class="text-sm text-slate-400">Diagnóstico visual de teclado, mouse, scroll e drift.</p>
+            <p id="kioskHint" class="text-xs text-slate-500 mt-1">Clique em "Modo teclado exclusivo" para capturar F1–F12 e outras teclas reservadas do navegador (Chrome/Edge).</p>
             </div>
           </div>
         </div>
 
         <div class="flex flex-wrap gap-2">
+          <button id="kioskBtn" class="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 border border-emerald-500/40 text-sm font-semibold transition">
+            Modo teclado exclusivo
+          </button>
           <button id="resetBtn" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-semibold transition">
             Limpar testes
           </button>
@@ -264,6 +269,54 @@
             </span>
           </div>
         </section>
+
+        <section class="glass rounded-2xl p-4 md:p-5 shadow-glow">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-lg font-bold">DPI do mouse (estimado)</h2>
+              <p class="text-sm text-slate-400">O navegador não acessa o DPI real do sensor — isto é uma estimativa a partir do quanto você arrasta o mouse na tela.</p>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3 mb-4">
+            <div class="flex justify-between items-center mb-2 gap-2">
+              <span class="text-sm font-medium">1. Calibrar a tela</span>
+              <span id="calibStatus" class="text-xs text-amber-400 text-right">Não calibrado (usando estimativa padrão)</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">Encoste um cartão de crédito/débito na tela e arraste a alça até a barra ficar do mesmo tamanho do cartão (8,56 cm de largura).</p>
+            <div id="calibTrack" class="relative h-10 rounded-lg bg-slate-900 border border-slate-700 select-none">
+              <div id="calibBar" class="absolute left-0 top-0 h-full bg-blue-600/50 rounded-l-lg pointer-events-none" style="width:220px"></div>
+              <div id="calibHandle" class="absolute top-0 h-full w-4 bg-blue-300 rounded cursor-ew-resize" style="left:216px"></div>
+            </div>
+            <div class="flex justify-end mt-2">
+              <button id="calibConfirmBtn" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold">Confirmar tamanho do cartão</button>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-sm font-medium">2. Medir arrastando</span>
+              <button id="dpiResetBtn" class="text-xs text-slate-500 hover:text-slate-300">Reiniciar arraste</button>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">Clique e segure o retângulo verde e arraste o mouse para a direita, o mais longe possível, depois solte.</p>
+            <div id="dpiTrack" class="relative h-16 rounded-xl bg-slate-950/70 border border-dashed border-slate-700 overflow-hidden select-none">
+              <div id="dpiFill" class="absolute left-0 top-0 h-full bg-emerald-500/15 pointer-events-none" style="width:0px"></div>
+              <div id="dpiHandle" class="absolute left-0 top-0 h-16 w-16 bg-emerald-500/80 border border-emerald-300 rounded-lg flex items-center justify-center text-xs font-bold text-emerald-950 cursor-grab active:cursor-grabbing" style="left:0px">arraste</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 mt-3 text-sm">
+            <div class="rounded-lg border border-slate-800 bg-slate-950/50 p-3">Distância <b id="dpiDistanceResult" class="float-right">0 cm</b></div>
+            <div class="rounded-lg border border-slate-800 bg-slate-950/50 p-3">Contagem bruta <b id="dpiRawCounts" class="float-right">0</b></div>
+            <div class="rounded-lg border border-slate-800 bg-slate-950/50 p-3">DPI estimado <b id="dpiResult" class="float-right">—</b></div>
+          </div>
+
+          <div class="mt-3 rounded-xl border border-amber-400/15 bg-amber-400/5 p-3">
+            <p class="text-xs text-amber-200/80">
+              Estimativa da resolução efetiva do ponteiro, não o DPI real do sensor — nenhum site tem acesso a essa informação de hardware. Depende da calibração da tela e da velocidade do ponteiro do sistema. Para uma leitura mais consistente, calibre com o cartão, use a velocidade padrão do mouse (6/11 no Windows) e desative "Aprimorar precisão do ponteiro" antes de medir.
+            </p>
+          </div>
+        </section>
       </div>
 
       <aside class="space-y-4">
@@ -420,8 +473,19 @@
       $("keyboardDiag").className = testedKeys.size ? "text-emerald-400" : "text-slate-400";
     }
 
+    const RESERVED_CODES = new Set([
+      "Tab","Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight",
+      "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
+      "Backspace"
+    ]);
+    const RESERVED_COMBO_KEYS = new Set(["KeyP","KeyS","KeyF","KeyN","KeyT","KeyW","KeyR","KeyG"]);
+
     document.addEventListener("keydown", e => {
-      if (["Tab","Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault();
+      const isTextField = ["INPUT","TEXTAREA"].includes(e.target.tagName);
+      const isReservedCombo = (e.ctrlKey || e.metaKey) && RESERVED_COMBO_KEYS.has(e.code);
+      if ((RESERVED_CODES.has(e.code) && !(e.code === "Backspace" && isTextField)) || isReservedCombo) {
+        e.preventDefault();
+      }
 
       $("lastKey").textContent = e.key === " " ? "Espaço" : e.key;
       $("lastCode").textContent = e.code;
@@ -453,6 +517,7 @@
     };
 
     document.addEventListener("mousedown", e => {
+      if (e.button === 3 || e.button === 4) e.preventDefault();
       if (e.target.closest("button")) return;
 
       clickCount++;
@@ -472,13 +537,22 @@
     });
 
     document.addEventListener("mouseup", e => {
+      if (e.button === 3 || e.button === 4) e.preventDefault();
       mouseSvgMap[e.button]?.classList.remove("active");
       addEvent("MOUSEUP", `button=${e.button}`, "text-purple-400");
+    });
+
+    document.addEventListener("auxclick", e => {
+      if (e.button === 3 || e.button === 4) e.preventDefault();
     });
 
     document.addEventListener("contextmenu", e => {
       if (e.target.closest("svg") || e.target.closest("#mousePad")) e.preventDefault();
     });
+
+    document.addEventListener("wheel", e => {
+      if (e.ctrlKey) e.preventDefault();
+    }, {passive:false});
 
     const pad = $("mousePad");
     const canvas = $("trailCanvas");
@@ -701,6 +775,178 @@
       }
     }
 
+    const kioskBtn = $("kioskBtn");
+    let kioskActive = false;
+
+    async function enterKioskMode() {
+      try {
+        await document.documentElement.requestFullscreen();
+
+        if (navigator.keyboard && navigator.keyboard.lock) {
+          await navigator.keyboard.lock([
+            "Escape","F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
+            "ControlLeft","ControlRight","AltLeft","AltRight","MetaLeft","MetaRight","Tab"
+          ]);
+          $("kioskHint").textContent = "Modo exclusivo ativo: teclas reservadas (F1–F12, Esc, Ctrl, Alt, Win, Tab) chegam direto à página.";
+          addEvent("SYSTEM", "Keyboard Lock ativado.", "text-emerald-400");
+        } else {
+          $("kioskHint").textContent = "Tela cheia ativada, mas o Keyboard Lock API não está disponível neste navegador (só existe no Chrome/Edge). F12, F11 e alguns atalhos ainda podem ser interceptados pelo navegador.";
+          addEvent("SYSTEM", "Keyboard Lock indisponível neste navegador.", "text-amber-400");
+        }
+
+        kioskActive = true;
+        kioskBtn.textContent = "Sair do modo exclusivo";
+      } catch (err) {
+        addEvent("SYSTEM", `Não foi possível ativar o modo exclusivo: ${err.message}`, "text-red-400");
+      }
+    }
+
+    function exitKioskMode() {
+      if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock();
+      if (document.fullscreenElement) document.exitFullscreen();
+      kioskActive = false;
+      kioskBtn.textContent = "Modo teclado exclusivo";
+      $("kioskHint").textContent = 'Clique em "Modo teclado exclusivo" para capturar F1–F12 e outras teclas reservadas do navegador (Chrome/Edge).';
+    }
+
+    kioskBtn.addEventListener("click", () => {
+      kioskActive ? exitKioskMode() : enterKioskMode();
+    });
+
+    document.addEventListener("fullscreenchange", () => {
+      if (!document.fullscreenElement && kioskActive) {
+        if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock();
+        kioskActive = false;
+        kioskBtn.textContent = "Modo teclado exclusivo";
+        $("kioskHint").textContent = 'Clique em "Modo teclado exclusivo" para capturar F1–F12 e outras teclas reservadas do navegador (Chrome/Edge).';
+        addEvent("SYSTEM", "Saiu da tela cheia — bloqueio de teclado desativado.", "text-slate-400");
+      }
+    });
+
+    const CALIB_CARD_WIDTH_CM = 8.56;
+    const CALIB_STORAGE_KEY = "inputlab_pxPerCm";
+    const calibTrack = $("calibTrack");
+    const calibBar = $("calibBar");
+    const calibHandle = $("calibHandle");
+    const calibStatusEl = $("calibStatus");
+
+    let pxPerCm = 96 / 2.54;
+    let calibrated = false;
+    let calibDragging = false;
+    let calibStartWidth = 0;
+    let calibStartX = 0;
+
+    try {
+      const savedPxPerCm = parseFloat(localStorage.getItem(CALIB_STORAGE_KEY));
+      if (savedPxPerCm && savedPxPerCm > 5) {
+        pxPerCm = savedPxPerCm;
+        calibrated = true;
+      }
+    } catch (err) {
+      // localStorage indisponível (política do navegador, aba privada restrita, etc.) — segue sem persistir calibração.
+    }
+
+    function updateCalibStatus() {
+      calibStatusEl.textContent = calibrated
+        ? `Calibrado (${pxPerCm.toFixed(1)} px/cm)`
+        : "Não calibrado (usando estimativa padrão)";
+      calibStatusEl.className = calibrated ? "text-xs text-emerald-400 text-right" : "text-xs text-amber-400 text-right";
+    }
+    updateCalibStatus();
+
+    calibHandle.addEventListener("mousedown", e => {
+      calibDragging = true;
+      calibStartWidth = calibBar.getBoundingClientRect().width;
+      calibStartX = e.clientX;
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    document.addEventListener("mousemove", e => {
+      if (!calibDragging) return;
+      const delta = e.clientX - calibStartX;
+      const maxWidth = calibTrack.clientWidth - 4;
+      const newWidth = Math.max(40, Math.min(maxWidth, calibStartWidth + delta));
+      calibBar.style.width = newWidth + "px";
+      calibHandle.style.left = Math.max(0, newWidth - 16) + "px";
+    });
+
+    document.addEventListener("mouseup", () => { calibDragging = false; });
+
+    $("calibConfirmBtn").addEventListener("click", () => {
+      const widthPx = calibBar.getBoundingClientRect().width;
+      pxPerCm = widthPx / CALIB_CARD_WIDTH_CM;
+      calibrated = true;
+      try {
+        localStorage.setItem(CALIB_STORAGE_KEY, String(pxPerCm));
+      } catch (err) {
+        // localStorage indisponível — calibração vale só para esta sessão.
+      }
+      updateCalibStatus();
+      addEvent("SYSTEM", `Tela calibrada: ${pxPerCm.toFixed(1)} px/cm.`, "text-emerald-400");
+    });
+
+    const dpiTrack = $("dpiTrack");
+    const dpiHandle = $("dpiHandle");
+    const dpiFill = $("dpiFill");
+    let dpiDragging = false;
+    let dpiStartClientX = 0;
+    let dpiHandleStartLeft = 0;
+    let dpiRawPath = 0;
+
+    function resetDpiHandle() {
+      dpiHandle.style.left = "0px";
+      dpiFill.style.width = "0px";
+      dpiRawPath = 0;
+      $("dpiRawCounts").textContent = "0";
+      $("dpiDistanceResult").textContent = "0 cm";
+      $("dpiResult").textContent = "—";
+    }
+
+    dpiHandle.addEventListener("mousedown", e => {
+      dpiDragging = true;
+      dpiRawPath = 0;
+      dpiStartClientX = e.clientX;
+      dpiHandleStartLeft = parseFloat(dpiHandle.style.left) || 0;
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    document.addEventListener("mousemove", e => {
+      if (!dpiDragging) return;
+      dpiRawPath += Math.hypot(e.movementX || 0, e.movementY || 0);
+
+      const dx = e.clientX - dpiStartClientX;
+      const maxLeft = dpiTrack.clientWidth - dpiHandle.offsetWidth;
+      const newLeft = Math.max(0, Math.min(maxLeft, dpiHandleStartLeft + dx));
+      dpiHandle.style.left = newLeft + "px";
+      dpiFill.style.width = newLeft + "px";
+
+      const distanceCm = newLeft / pxPerCm;
+      $("dpiRawCounts").textContent = Math.round(dpiRawPath);
+      $("dpiDistanceResult").textContent = `${distanceCm.toFixed(1)} cm`;
+    });
+
+    document.addEventListener("mouseup", () => {
+      if (!dpiDragging) return;
+      dpiDragging = false;
+
+      const leftPx = parseFloat(dpiHandle.style.left) || 0;
+      const distanceCm = leftPx / pxPerCm;
+      const distanceInches = distanceCm / 2.54;
+
+      if (distanceInches < 0.5 || dpiRawPath === 0) {
+        $("dpiResult").textContent = "arraste mais";
+        return;
+      }
+
+      const estimatedDpi = Math.round(dpiRawPath / distanceInches);
+      $("dpiResult").textContent = `${estimatedDpi} DPI (aprox.)`;
+      addEvent("DPI", `Estimativa: ${estimatedDpi} DPI | distância=${distanceCm.toFixed(1)}cm | contagem=${Math.round(dpiRawPath)}px | calibrado=${calibrated}`, "text-blue-400");
+    });
+
+    $("dpiResetBtn").addEventListener("click", resetDpiHandle);
+
     $("resetBtn").addEventListener("click", () => {
       testedKeys.clear();
       clickCount = 0;
@@ -745,6 +991,10 @@
 
       drawTrail();
       drawWheel();
+
+      dpiDragging = false;
+      resetDpiHandle();
+
       addEvent("SYSTEM", "Testes reiniciados.", "text-slate-400");
     });
 
